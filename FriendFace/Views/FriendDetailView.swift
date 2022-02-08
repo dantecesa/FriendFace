@@ -9,15 +9,16 @@ import SwiftUI
 import MessageUI
 
 struct FriendDetailView: View {
-    var user: User
-    @EnvironmentObject var userTracker: UserTracker
+    var user: CachedUser
+    @FetchRequest(sortDescriptors: [SortDescriptor(\.name)]) var allUsers: FetchedResults<CachedUser>
+    @Environment(\.managedObjectContext) var moc
     
     var body: some View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Text(user.name)
+                        Text(user.wrappedName)
                             .font(.title)
                         Spacer()
                         Text("Born \(2022 - user.age)" as String)
@@ -30,7 +31,7 @@ struct FriendDetailView: View {
                             .foregroundColor(.secondary)
                             .font(.subheadline)
                             
-                        Text("\(user.company)")
+                        Text("\(user.wrappedCompany)")
                             .foregroundColor(.secondary)
                             .font(.subheadline)
                     }
@@ -39,7 +40,7 @@ struct FriendDetailView: View {
                         Image(systemName: "calendar")
                             .foregroundColor(.secondary)
                             .font(.subheadline)
-                        Text("Member since: \((user.registered.formatted(date: .abbreviated, time: .omitted)))")
+                        Text("Member since: \((user.wrappedRegistered.formatted(date: .abbreviated, time: .omitted)))")
                             .foregroundColor(.secondary)
                             .font(.subheadline)
                     }
@@ -50,7 +51,7 @@ struct FriendDetailView: View {
             }
             
             Section {
-                Text(user.about)
+                Text(user.wrappedAbout)
                     .textSelection(.enabled)
             } header: {
                 Text("Description")
@@ -58,27 +59,27 @@ struct FriendDetailView: View {
             
             Section {
                 Button(action: {
-                    EmailHelper.shared.sendEmail(subject: "", body: "", to: "\(user.email)")
+                    EmailHelper.shared.sendEmail(subject: "", body: "", to: "\(user.wrappedEmail)")
                 }, label: {
-                    Text("\(user.email)")
+                    Text("\(user.wrappedEmail)")
                 })
             } header: {
                 Text("Email")
             }
             
             Section {
-                Text(user.address)
+                Text(user.wrappedAddress)
                     .textSelection(.enabled)
             } header: {
                 Text("Address")
             }
                 
                 Section {
-                    ForEach(user.friends, id:\.self) { friend in
+                    ForEach(user.wrappedFriends, id:\.self) { friend in
                         NavigationLink(destination: {
-                            FriendDetailView(user: findUser(forFriend: friend) ?? User(id: UUID(), isActive: true, name: "Unkonwn User", age: 30, company: "Unkonwn Company", email: "Unknown Company", address: "Unknown Address", about: "", registered: Date.now, tags: [], friends: [])).environmentObject(userTracker)
+                            FriendDetailView(user: findUser(forFriend: friend) ?? CachedUser(context: moc) )
                         }, label: {
-                            Text(friend.name)
+                            Text(friend.wrappedName)
                         })
                     }
                 } header: {
@@ -88,9 +89,7 @@ struct FriendDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
     
-    func findUser(forFriend: Friend) -> User? {
-        let allUsers = userTracker.users
-        
+    func findUser(forFriend: CachedFriend) -> CachedUser? {
         for aUser in allUsers {
             if forFriend.id == aUser.id {
                 return aUser
@@ -99,23 +98,3 @@ struct FriendDetailView: View {
         return nil
     }
 }
-
-struct FriendDetailView_Previews: PreviewProvider {
-    static var previews: some View {
-        FriendDetailView(user: User(id: UUID(), isActive: true, name: "Test User", age: 32, company: "Test Company", email: "test@test.com", address: "123 Main St., San Francisco, CA", about: "A string about the user", registered: Date.now, tags: ["tag1", "tag2"], friends: [Friend(id: UUID(), name: "Test Friend 1"), Friend(id: UUID(), name: "Test Friend 2")]))
-    }
-}
-
-/*
- let id: UUID
- let isActive: Bool
- let name: String
- let age: Int
- let company: String
- let email: String
- let address: String
- let about: String
- let registered: Date
- let tags: [String]
- let friends: [Friend]
- */
